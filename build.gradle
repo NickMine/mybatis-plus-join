@@ -1,0 +1,56 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'java'
+}
+
+//引入打包到maven私服配置
+//apply from: "../mybatis-plus-join/push.gradle"
+
+ext {
+    configurations {
+        javaVersion = JavaVersion.VERSION_1_8
+    }
+    libraries = [
+            springBootVersion = '2.6.7',
+            mybatisPlusVersion = '3.5.1',
+            hutoolVersion = '5.7.12',
+            commonsLang3Version = '3.12.0',
+            lombokVersion = '1.18.22'
+    ]
+}
+
+
+group = 'com.langheng'
+version = "${mybatisPlusVersion}"
+sourceCompatibility = "${javaVersion}"
+
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    maven { url "https://maven.aliyun.com/repository/public" }
+    mavenCentral()
+}
+
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    //mybatis
+    implementation "com.baomidou:mybatis-plus-boot-starter:${mybatisPlusVersion}"
+    //commons
+    implementation "org.apache.commons:commons-lang3:${commonsLang3Version}"
+    //hutool
+    implementation "cn.hutool:hutool-all:${hutoolVersion}"
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    developmentOnly "org.springframework.boot:spring-boot-devtools:${springBootVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+}
