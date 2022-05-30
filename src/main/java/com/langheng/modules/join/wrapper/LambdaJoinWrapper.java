@@ -7,8 +7,8 @@ import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.toolkit.LambdaUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
-import com.baomidou.mybatisplus.core.toolkit.support.LambdaMeta;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
+import com.baomidou.mybatisplus.core.toolkit.support.SerializedLambda;
 import com.langheng.modules.join.support.AlisColumnCache;
 import com.langheng.modules.join.support.JoinLambdaUtil;
 import com.langheng.modules.join.support.JoinPart;
@@ -264,11 +264,11 @@ public class LambdaJoinWrapper<Main>
      */
     private String alisColumnToString(SFunction<?, ?> column) {
         //解析表达式
-        LambdaMeta serializedLambda = LambdaUtils.extract(column);
+        SerializedLambda serializedLambda = LambdaUtils.resolve(column);
         //获取列明
         String fieldName = PropertyNamer.methodToProperty(serializedLambda.getImplMethodName());
         //获取实体类类型
-        Class<?> instantiatedClass = serializedLambda.getInstantiatedClass();
+        Class<?> instantiatedClass = serializedLambda.getInstantiatedType();
         //尝试缓存
         JoinLambdaUtil.tryInitCache(instantiatedClass);
         //获取缓存
@@ -308,11 +308,11 @@ public class LambdaJoinWrapper<Main>
      */
     private <T> AlisColumnCache getAlisColumnCache(SFunction<T, ?> column) {
         //解析表达式
-        LambdaMeta meta = LambdaUtils.extract(column);
+        SerializedLambda serializedLambda = LambdaUtils.resolve(column);
         //获取列明
-        String fieldName = PropertyNamer.methodToProperty(meta.getImplMethodName());
+        String fieldName = PropertyNamer.methodToProperty(serializedLambda.getImplMethodName());
         //获取实体类类型
-        Class<?> instantiatedClass = meta.getInstantiatedClass();
+        Class<?> instantiatedClass = serializedLambda.getInstantiatedType();
         //尝试缓存
         JoinLambdaUtil.tryInitCache(instantiatedClass);
         //获取缓存
