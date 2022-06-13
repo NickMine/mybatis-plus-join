@@ -37,7 +37,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         extends AbstractWrapper<T, R, Children>
         implements JoinQuery<Children, R> {
 
-    public final static String SELECT_TEMPLATE = "SELECT ${ew.sqlSelect} FROM ${ew.tableName} ${ew.tableAlias} ${ew.joinPart} ${ew.customSqlSegment}";
+    public final static String SELECT_TEMPLATE = "<script> <choose> <when test=\"ew != null and ew.sqlFirst != null\"> ${ew.sqlFirst} </when> <otherwise></otherwise> </choose>  SELECT ${ew.sqlSelect} FROM ${ew.tableName} ${ew.tableAlias} ${ew.joinPart} ${ew.customSqlSegment} \n</script>";
 
     /**
      * 查询字段的返回映射类
