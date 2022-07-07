@@ -1,6 +1,5 @@
 package com.langheng.modules.join.wrapper;
 
-import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ReUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
@@ -13,8 +12,10 @@ import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.toolkit.Assert;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import com.langheng.modules.join.conditions.query.JoinQuery;
+import com.langheng.modules.join.support.JoinLambdaUtil;
 import com.langheng.modules.join.support.JoinPart;
 import lombok.Getter;
 import lombok.Setter;
@@ -36,8 +37,6 @@ import java.util.stream.Collectors;
 public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWrapper<T, R, Children>>
         extends AbstractWrapper<T, R, Children>
         implements JoinQuery<Children, R> {
-
-    public final static String SELECT_TEMPLATE = "<script> <choose> <when test=\"ew != null and ew.sqlFirst != null\"> ${ew.sqlFirst} </when> <otherwise></otherwise> </choose>  SELECT ${ew.sqlSelect} FROM ${ew.tableName} ${ew.tableAlias} ${ew.joinPart} ${ew.customSqlSegment} \n</script>";
 
     /**
      * 查询字段的返回映射类
@@ -182,7 +181,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         }
 
         // 用逗号拼接查询列
-        sqlSelect = CollectionUtil.isNotEmpty(sqlSelectList) ?
+        sqlSelect = CollectionUtils.isNotEmpty(sqlSelectList) ?
                 stripSqlInjection(String.join(",", sqlSelectList)) : null;
 
 
@@ -207,7 +206,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
      */
     protected List<String> getTableAlisColumns(TableInfo tableInfo) {
         //获取表名，转换为别名 sys_user -> su
-        String alis = tableNameToTableAlias(tableInfo.getTableName());
+        String alis = JoinLambdaUtil.tableNameToTableAlias(tableInfo.getTableName());
         //获取表的
         List<String> tableColumns = getTableColumns(tableInfo);
         return tableColumns.stream()
@@ -230,7 +229,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         if (tableAlias == null) {
             tableAlias = "main";
         }
-        if (StrUtil.isEmpty(tableAlias)) {
+        if (StringUtils.isEmpty(tableAlias)) {
             return "";
         }
         return tableAlias.concat(StringPool.DOT);
@@ -254,7 +253,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
 
         //连接的表是否使用别名
         Map<String, String> fieldNameAliasNameMap = new ConcurrentHashMap<>(5);
-        if (CollectionUtil.isNotEmpty(this.joinPartsMap)) {
+        if (CollectionUtils.isNotEmpty(this.joinPartsMap)) {
             this.joinPartsMap.forEach((alias, joinPart) ->
 //                    joinPart.getTableColumnSet().forEach(name-> columnNameAliasNameMap.putIfAbsent(name, s)
             {
@@ -263,7 +262,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
                 if (joinTableInfo != null) {
                     //以<column,alias>的形式放入map
                     List<TableFieldInfo> joinTableFieldList = joinTableInfo.getFieldList();
-                    if (CollectionUtil.isNotEmpty(joinTableFieldList)) {
+                    if (CollectionUtils.isNotEmpty(joinTableFieldList)) {
                         joinTableFieldList.forEach(tableFieldInfo ->
                                 fieldNameAliasNameMap.putIfAbsent(tableFieldInfo.getField().getName(), alias));
                     }
@@ -277,7 +276,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         //主表信息
         TableInfo tableInfo = TableInfoHelper.getTableInfo(this.tableName);
         List<TableFieldInfo> fieldList = tableInfo.getFieldList();
-        if (CollectionUtil.isNotEmpty(fieldList)) {
+        if (CollectionUtils.isNotEmpty(fieldList)) {
             fieldList.forEach(tableFieldInfo ->
                     fieldNameAliasNameMap.put(tableFieldInfo.getField().getName(), this.tableAlias));
         }
@@ -316,7 +315,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
                 //添加到查询列数组
                 sqlSelect.add(StringUtils.isNotBlank(aliasName) ?
                         //列添加别名
-                        aliasName.concat(StrUtil.DOT).concat(columnName) : columnName);
+                        aliasName.concat(StringPool.DOT).concat(columnName) : columnName);
             }
         }
         return sqlSelect;
@@ -329,7 +328,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
      * @return 数据库表名称
      */
     public static String getTableFieldNameByEntityFieldName(String entityFieldName) {
-        if (StrUtil.isEmpty(entityFieldName)) {
+        if (StringUtils.isEmpty(entityFieldName)) {
             return "";
         }
         return ReUtil.replaceAll(entityFieldName, "([a-z])([A-Z])", "$1_$2").toLowerCase();
@@ -405,7 +404,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
      * @return 别名
      */
     protected String generateTableAlias(String tableName) {
-        String alias = tableNameToTableAlias(tableName);
+        String alias = JoinLambdaUtil.tableNameToTableAlias(tableName);
         if (!joinPartsMap.containsKey(alias)) {
             //如果别名未存在，则直接返回
             return alias;
@@ -438,22 +437,6 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             return findUniqueTableAlias(alias, suffix + 1);
         }
         return finalAlias;
-    }
-
-    /**
-     * 根据数据库表名生成别名（可能重复）（通常取首字母，比如co_order_main的别名为com，）
-     *
-     * @param tableName 数据库
-     * @return 别名
-     */
-    private static String tableNameToTableAlias(String tableName) {
-        List<String> resultList = ReUtil.findAll("_(\\w)", tableName, 1);
-        //如果未找到匹配项，则直接使用表名的前3个字符（不含下划线）作为别名
-        if (resultList == null || resultList.isEmpty()) {
-            tableName = tableName.replace("_", "");
-            return tableName.length() >= 3 ? tableName.substring(0, 3) : tableName;
-        }
-        return tableName.substring(0, 1).concat(StrUtil.join("", resultList));
     }
 
     /**
@@ -505,7 +488,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
      * @return 联表部分SQL
      */
     public String getJoinPart() {
-        if (CollectionUtil.isEmpty(joinPartsMap)) {
+        if (CollectionUtils.isEmpty(joinPartsMap)) {
             return "";
         }
         //连表的信息
@@ -515,13 +498,13 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             //连接数据库字段名称（key为主表字段，value为连接表字段）
             Map<String, String> joinFieldsMap = joinPart.getJoinFieldsMap();
             //拼接连表字段
-            String joinFields = StrUtil.join(" AND ", joinFieldsMap.entrySet().stream()
+            String joinFields = StringUtils.joinWith(" AND ", joinFieldsMap.entrySet().stream()
                     .map(joinOn -> {
                         //主表字段
                         String fromField = joinOn.getKey().contains(".") ? joinOn.getKey() :
                                 String.format("%s.%s",
                                         //没有设置主表别名，就用当前wrapper设置的主表别名
-                                        StrUtil.isEmpty(joinPart.getFromTableAlias()) ? this.tableAlias : joinPart.getFromTableAlias()
+                                        StringUtils.isEmpty(joinPart.getFromTableAlias()) ? this.tableAlias : joinPart.getFromTableAlias()
                                         , joinOn.getKey());
                         //连表字段
                         String toField = joinOn.getValue().contains(".") ? joinOn.getValue() :
@@ -533,13 +516,13 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
                             String listStr = joinOn.getValue().replace("in:", "");
                             String[] arr = listStr.split(",");
                             return String.format("%s IN (%s)", fromField,
-                                    StrUtil.join(",", Arrays.stream(arr)
+                                    StringUtils.joinWith(",", Arrays.stream(arr)
                                             .map(this::wrapWithSingleQuote)
                                             .collect(Collectors.toList())));
                         }
                         return String.format("%s = %s", fromField, toField);
                     })
-                    .collect(Collectors.toList()));
+                    .toArray());
 
             // 2.处理连表 额外条件(apply)
             // apply 是left join t2 on 的额外添加条件
@@ -559,7 +542,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
 
 
         //每一个left join 用换行隔开
-        return StrUtil.join(StringPool.NEWLINE, joinParts);
+        return StringUtils.joinWith(StringPool.NEWLINE, joinParts.toArray());
     }
 
     /**
@@ -618,5 +601,10 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         }
 
         return typedThis;
+    }
+
+    @Override
+    public Children first(boolean condition, String firstSql) {
+        throw new MybatisPlusException("JoinWrapper does not support for firstSql");
     }
 }
