@@ -20,8 +20,6 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
 
     private static final Logger log = LoggerFactory.getLogger(JoinWrapper.class);
 
-    public final static String SELECT_TEMPLATE = "SELECT ${ew.sqlSelect} FROM ${ew.tableName} ${ew.tableAlias} ${ew.joinPart} ${ew.customSqlSegment}";
-
 
     /**
      * Mybatis-plus 新版本已弃用,需要重新构造该枚举类（WrapperKeyword）

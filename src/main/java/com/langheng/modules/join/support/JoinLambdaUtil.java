@@ -26,6 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class JoinLambdaUtil {
 
+    public static final String SELECT_TEMPLATE = "<script> SELECT ${ew.sqlSelect} FROM ${ew.tableName} ${ew.tableAlias} ${ew.joinPart} ${ew.customSqlSegment} \n</script>";
+
 
     /**
      * 表字段（column）和 实体字段（entity属性）缓存map
@@ -142,6 +144,6 @@ public class JoinLambdaUtil {
             tableName = tableName.replace("_", "");
             return tableName.length() >= 3 ? tableName.substring(0, 3) : tableName;
         }
-        return tableName.substring(0, 1).concat(StrUtil.join("", resultList));
+        return tableName.substring(0, 1).concat(StrUtil.join("", resultList.toArray()));
     }
 }
