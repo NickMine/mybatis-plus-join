@@ -1,7 +1,5 @@
 package com.langheng.modules.join.wrapper;
 
-import cn.hutool.core.util.ReUtil;
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.ISqlSegment;
 import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
@@ -12,8 +10,6 @@ import com.baomidou.mybatisplus.core.toolkit.support.SerializedLambda;
 import com.langheng.modules.join.support.AlisColumnCache;
 import com.langheng.modules.join.support.JoinLambdaUtil;
 import com.langheng.modules.join.support.JoinPart;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.reflection.property.PropertyNamer;
@@ -22,7 +18,6 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -36,21 +31,8 @@ import java.util.stream.Collectors;
 public class LambdaJoinWrapper<Main>
         extends AbstractJoinWrapper<Main, SFunction<Main, ?>, LambdaJoinWrapper<Main>> {
 
-    /**
-     * 连表的缓存和别名缓存
-     */
-    @Getter
-    @Setter
-    private Map<Class<?>, String> joinClassMap = new ConcurrentHashMap<>(5);
-
     public LambdaJoinWrapper(Class<Main> entityClass, String tableAlias, Class<?> selectClass) {
         super(entityClass, tableAlias, selectClass);
-        //使用自定义别名
-        useTableAlis(entityClass, tableAlias);
-    }
-
-    private void useTableAlis(Class<?> clazz, String alis) {
-        joinClassMap.put(clazz, alis);
     }
 
     public LambdaJoinWrapper(Class<Main> entityClass, Class<?> selectClass) {
@@ -64,28 +46,10 @@ public class LambdaJoinWrapper<Main>
      */
     @Override
     public void setTableAlias(String tableAlias) {
-        if (StringUtils.isNotBlank(tableAlias)) {
-            this.tableAlias = tableAlias;
-        } else {
-            tableAlias = tableNameToTableAlias(getClassTableName(getEntityClass()));
-            this.tableAlias = tableAlias;
+        if (!StringUtils.isNotBlank(tableAlias)) {
+            tableAlias = JoinLambdaUtil.tableNameToTableAlias(getClassTableName(getEntityClass()));
         }
-    }
-
-    /**
-     * 根据数据库表名生成别名（可能重复）（通常取首字母，比如sys_user的别名为su，）
-     *
-     * @param tableName 数据库
-     * @return 别名
-     */
-    private static String tableNameToTableAlias(String tableName) {
-        List<String> resultList = ReUtil.findAll("_(\\w)", tableName, 1);
-        //如果未找到匹配项，则直接使用表名的前3个字符（不含下划线）作为别名
-        if (resultList == null || resultList.isEmpty()) {
-            tableName = tableName.replace("_", "");
-            return tableName.length() >= 3 ? tableName.substring(0, 3) : tableName;
-        }
-        return tableName.substring(0, 1).concat(StrUtil.join("", resultList));
+        this.tableAlias = tableAlias;
     }
 
     /**
@@ -111,7 +75,7 @@ public class LambdaJoinWrapper<Main>
     @Override
     protected LambdaJoinWrapper<Main> instance() {
         LambdaJoinWrapper<Main> lambdaJoinWrapper = new LambdaJoinWrapper<>(getEntityClass(), getTableAlias(), getSelectClass());
-        lambdaJoinWrapper.joinClassMap = this.joinClassMap;
+        lambdaJoinWrapper.classAlisMap = this.classAlisMap;
         lambdaJoinWrapper.paramNameSeq = this.paramNameSeq;
         lambdaJoinWrapper.paramNameValuePairs = this.paramNameValuePairs;
         return lambdaJoinWrapper;
@@ -209,7 +173,7 @@ public class LambdaJoinWrapper<Main>
             joinTableAlias = generateTableAlias(joinTableName);
         } else {
             //缓存自定义别名
-            useTableAlis(joinClass, joinTableAlias);
+            super.useTableAlis(joinClass, joinTableAlias);
         }
         //主表字段
         String mainField = alisColumnToString(mainColumn);
@@ -229,7 +193,7 @@ public class LambdaJoinWrapper<Main>
         //添加到连表信息Map中
         this.joinPartsMap.put(joinTableAlias, joinPart);
         //将连表添加到缓存map中
-        joinClassMap.put(joinClass, joinTableAlias);
+        classAlisMap.put(joinClass, joinTableAlias);
 
         //子实例
         LambdaJoinWrapper<Join> child =
@@ -274,9 +238,9 @@ public class LambdaJoinWrapper<Main>
         //获取缓存
         AlisColumnCache alisColumnCache = JoinLambdaUtil.getAlisColumnCache(fieldName, instantiatedClass);
         //lambda表达式的类是否有自定义别名
-        if (joinClassMap.containsKey(instantiatedClass)) {
+        if (classAlisMap.containsKey(instantiatedClass)) {
             //有自定义别名，直接拼接
-            String alis = joinClassMap.get(instantiatedClass);
+            String alis = classAlisMap.get(instantiatedClass);
             return alis
                     .concat(StringPool.DOT)
                     .concat(alisColumnCache.getColumn());
@@ -327,7 +291,7 @@ public class LambdaJoinWrapper<Main>
      */
     public <Join> LambdaJoinWrapper<Join> joinTo(Class<Join> joinClass) {
         //检验是否在连表缓存中
-        if (null == joinClass || !joinClassMap.containsKey(joinClass)) {
+        if (null == joinClass || !classAlisMap.containsKey(joinClass)) {
             throw new MybatisPlusException(
                     //该表不在连表缓存中
                     MessageFormat.format("this class[{0}] not in joined table map！", joinClass, getEntityClass()));

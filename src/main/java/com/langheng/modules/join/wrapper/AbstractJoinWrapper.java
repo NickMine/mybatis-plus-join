@@ -74,14 +74,36 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
     protected boolean isSetSelect;
 
     /**
+     * 是否设置逻辑删除字段条件,初始值为true
+     */
+    protected boolean isWithLogicDelete;
+
+    /**
+     * 是否已添加设置逻辑删除字段条件到条件里（normalExpression）
+     */
+    protected boolean isCacheLogicDelete;
+
+    /**
      * 连表信息缓存map
      */
     protected Map<String, JoinPart> joinPartsMap;
 
     /**
-     * 自定义别名缓存
+     * 连表的缓存和别名缓存
      */
-    protected Map<Class<?>, String> classAlisMap;
+    @Getter
+    @Setter
+    protected Map<Class<?>, String> classAlisMap = new ConcurrentHashMap<>(5);
+
+    /**
+     * 添加连表类和别名到缓存
+     *
+     * @param clazz 类
+     * @param alis  别名
+     */
+    protected void useTableAlis(Class<?> clazz, String alis) {
+        classAlisMap.put(clazz, alis);
+    }
 
 
     /**
@@ -112,6 +134,8 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         }
         //是否设置查询
         this.isSetSelect = null == selectClass;
+        //使用自定义别名
+        useTableAlis(entityClass, tableAlias);
     }
 
     /**
@@ -123,8 +147,9 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         this.sqlSelect = SharedString.emptyString();
         this.sqlColumn = new LinkedList<>();
         this.isSetSelect = false;
+        this.isWithLogicDelete = true;
+        this.isCacheLogicDelete = false;
         this.joinPartsMap = new LinkedHashMap<>(5);
-        this.classAlisMap = new LinkedHashMap<>(5);
 
         //mybatis-plus 默认初始化方法
         super.initNeed();
@@ -160,29 +185,32 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         // TODO: 2022/5/23  添加基本查询函数,位置在查询实体类前
 
         //添加selectClass的字段
-        if (isSetSelect && null != this.selectClass) {
-            List<String> selectClassSql = this.getSelectSql(this.selectClass);
-            sqlSelectList.addAll(selectClassSql);
+        if (isSetSelect) {
+            sqlSelectList = this.sqlColumn;
         } else {
-            // isSelect 为 false，selectClass 为 null，用主表和连表拼查询字段，默认 main.*,join.*
-            // 兜底主表字段
-            if (this.getEntity() == null) {
-                throw new MybatisPlusException("ew.entity is null!");
+            if (null != this.selectClass) {
+                List<String> selectClassSql = this.getSelectSql(this.selectClass);
+                sqlSelectList.addAll(selectClassSql);
+            } else {
+                // isSelect 为 false，selectClass 为 null，用主表和连表拼查询字段，默认 main.*,join.*
+                // 兜底主表字段
+                if (this.getEntity() == null) {
+                    throw new MybatisPlusException("ew.entity is null!");
+                }
+
+                //主表
+                String mainSelect = this.sqlSelectAll(this.tableAlias);
+                sqlSelectList.add(mainSelect);
+                //连表
+                List<String> joinSelect = joinPartsMap.keySet().stream()
+                        .map(this::sqlSelectAll)
+                        .collect(Collectors.toList());
+                sqlSelectList.addAll(joinSelect);
             }
-
-            //主表
-            String mainSelect = this.sqlSelectAll(this.tableAlias);
-            sqlSelectList.add(mainSelect);
-            //连表
-            List<String> joinSelect = joinPartsMap.keySet().stream()
-                    .map(this::sqlSelectAll)
-                    .collect(Collectors.toList());
-            sqlSelectList.addAll(joinSelect);
         }
-
         // 用逗号拼接查询列
         sqlSelect = CollectionUtils.isNotEmpty(sqlSelectList) ?
-                stripSqlInjection(String.join(",", sqlSelectList)) : null;
+                stripSqlInjection(String.join(StringPool.COMMA, sqlSelectList)) : null;
 
 
         if (StringUtils.isBlank(sqlSelect)) {
@@ -215,6 +243,12 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 将sql中的特殊字符去掉
+     *
+     * @param sql sql语句
+     * @return 返回sql
+     */
     private static String stripSqlInjection(String sql) {
         Assert.notNull(sql, "strip sql is null.");
         return sql.replaceAll("('.+--)|(--)|(\\|)|(%7C)", "");
@@ -248,8 +282,6 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         }
         //设置sql字段，（先加个空格防止跟前面的select挨在一起）
         List<String> sqlSelect = new ArrayList<>();
-        //是否使用别名
-        boolean aliasNameFlag = StringUtils.isNotBlank(this.tableAlias);
 
         //连接的表是否使用别名
         Map<String, String> fieldNameAliasNameMap = new ConcurrentHashMap<>(5);
@@ -337,8 +369,8 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
     /**
      * 解析类的属性，转成查询column
      *
-     * @param clazz
-     * @return
+     * @param clazz 获取类的表字段
+     * @return 返回类的表字段
      */
     public static List<String> getTableColumns(Class<?> clazz) {
         Assert.notNull(clazz, "clazz must be not null");
@@ -351,9 +383,9 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
     /**
      * 解析类的属性，转成查询column
      *
-     * @param tableInfo
-     * @param excludeColumns
-     * @return
+     * @param tableInfo      表缓存
+     * @param excludeColumns 不查询字段
+     * @return 表字段
      */
     public static List<String> getTableColumns(TableInfo tableInfo, String... excludeColumns) {
 
@@ -411,15 +443,6 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         } else {
             //如果别名已存在，则通过增加数字后缀的方式避免冲突
             return findUniqueTableAlias(alias, 1);
-        }
-    }
-
-    /**
-     * 初始化主表实体类信息
-     */
-    protected void initEntityClass() {
-        if (this.getEntity() != null) {
-            this.setEntityClass((Class<T>) this.getEntity().getClass());
         }
     }
 
@@ -606,5 +629,30 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
     @Override
     public Children first(boolean condition, String firstSql) {
         throw new MybatisPlusException("JoinWrapper does not support for firstSql");
+    }
+
+    /**
+     * 忽略逻辑删除查询条件
+     *
+     * @return children
+     */
+    public Children ignoreLogic() {
+        this.isWithLogicDelete = false;
+        return this.typedThis;
+    }
+
+    @Override
+    public String getSqlSegment() {
+        //判断是否设置逻辑删除字段和是否已经添加逻辑删除字段条件
+        if (isWithLogicDelete && !isCacheLogicDelete) {
+            this.classAlisMap.forEach((clazz, alis) -> {
+                TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
+                if (null != tableInfo) {
+                    String logicDeleteSql = tableInfo.getLogicDeleteSql(true, false);
+                    expression.getNormal().add(() -> logicDeleteSql);
+                }
+            });
+        }
+        return super.getSqlSegment();
     }
 }
