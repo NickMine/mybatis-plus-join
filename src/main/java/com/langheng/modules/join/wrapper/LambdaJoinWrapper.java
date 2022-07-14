@@ -10,6 +10,8 @@ import com.baomidou.mybatisplus.core.toolkit.support.SerializedLambda;
 import com.langheng.modules.join.support.AlisColumnCache;
 import com.langheng.modules.join.support.JoinLambdaUtil;
 import com.langheng.modules.join.support.JoinPart;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.reflection.property.PropertyNamer;
@@ -18,6 +20,7 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 

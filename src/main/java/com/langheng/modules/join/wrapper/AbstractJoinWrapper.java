@@ -648,8 +648,9 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             this.classAlisMap.forEach((clazz, alis) -> {
                 TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
                 if (null != tableInfo) {
-                    String logicDeleteSql = tableInfo.getLogicDeleteSql(true, false);
-                    expression.getNormal().add(() -> logicDeleteSql);
+                    String logicDeleteSql = tableInfo.getLogicDeleteSql(false, false);
+                    expression.getNormal().add(() ->
+                            String.format(" AND %s.%s ",alis, logicDeleteSql));
                 }
             });
         }
