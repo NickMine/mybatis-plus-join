@@ -132,7 +132,7 @@ public class JoinLambdaUtil {
     }
 
     /**
-     * 根据数据库表名生成别名（可能重复）（通常取首字母，比如co_order_main的别名为com，）
+     * 根据数据库表名生成别名（可能重复）（通常取首字母，比如sys_user的别名为su，）
      *
      * @param tableName 数据库
      * @return 别名
