@@ -54,3 +54,13 @@ dependencies {
     developmentOnly "org.springframework.boot:spring-boot-devtools:${springBootVersion}"
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 }
+
+publishing{
+    publications{
+        create("maven_public",MavenPublication::class){
+            groupId "com.github.NickMine"
+            artifactId "mybatis-plus-join"
+            version "3.5.1-release"
+        }
+    }
+}
