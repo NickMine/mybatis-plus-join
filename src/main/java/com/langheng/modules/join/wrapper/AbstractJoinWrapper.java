@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -76,12 +77,12 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
     /**
      * 是否设置逻辑删除字段条件,初始值为true
      */
-    protected boolean isWithLogicDelete;
+    protected AtomicBoolean isWithLogicDelete;
 
     /**
      * 是否已添加设置逻辑删除字段条件到条件里（normalExpression）
      */
-    protected boolean isCacheLogicDelete;
+    protected AtomicBoolean isCacheLogicDelete;
 
     /**
      * 连表信息缓存map
@@ -147,8 +148,8 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         this.sqlSelect = SharedString.emptyString();
         this.sqlColumn = new LinkedList<>();
         this.isSetSelect = false;
-        this.isWithLogicDelete = true;
-        this.isCacheLogicDelete = false;
+        this.isWithLogicDelete = new AtomicBoolean(true);
+        this.isCacheLogicDelete = new AtomicBoolean(false);
         this.joinPartsMap = new LinkedHashMap<>(5);
 
         //mybatis-plus 默认初始化方法
@@ -637,22 +638,23 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
      * @return children
      */
     public Children ignoreLogic() {
-        this.isWithLogicDelete = false;
+        this.isWithLogicDelete.set(false);
         return this.typedThis;
     }
 
     @Override
     public String getSqlSegment() {
         //判断是否设置逻辑删除字段和是否已经添加逻辑删除字段条件
-        if (isWithLogicDelete && !isCacheLogicDelete) {
+        if (isWithLogicDelete.get() && !isCacheLogicDelete.get()) {
             this.classAlisMap.forEach((clazz, alis) -> {
                 TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
-                if (null != tableInfo) {
+                if (null != tableInfo && tableInfo.isWithLogicDelete()) {
                     String logicDeleteSql = tableInfo.getLogicDeleteSql(false, false);
                     expression.getNormal().add(() ->
-                            String.format(" AND %s.%s ",alis, logicDeleteSql));
+                            String.format(" AND %s.%s ", alis, logicDeleteSql));
                 }
             });
+            isCacheLogicDelete.set(true);
         }
         return super.getSqlSegment();
     }
