@@ -39,7 +39,7 @@ mybatis-plus的连表的增强，提供lambda和字符串两种方式的wrapper�
 
 Add it in your root build.gradle at the end of repositories:
 
-```css
+```xml
     allprojects {
         repositories {
             ...            maven { url 'https://jitpack.io' }
@@ -49,13 +49,11 @@ Add it in your root build.gradle at the end of repositories:
 
 **Step 2.** Add the dependency
 
-```css
+```xml
     dependencies {
             implementation 'com.github.NickMine:mybatis-plus-join:r.3.5.1'
     }
 ```
-
-
 
 ### 代码用例
 
@@ -63,7 +61,7 @@ Add it in your root build.gradle at the end of repositories:
 //设置连表信息,student表，userClass用户关联班级表，classInfo班级信息表
 // StudentVo查询列信息Vo返回类
 LambdaJoinWrapper<Student> lambdaJoinWrapper = 
-    new LambdaJoinWrapper<>(Student.class, StudentVo.class)  
+   new LambdaJoinWrapper<>(Student.class, StudentVo.class)  
         .leftJoin(UserClass.class,  
                 Student::getStudentId,  
                 UserClass::getStudentId  
@@ -76,18 +74,15 @@ LambdaJoinWrapper<Student> lambdaJoinWrapper =
         .main(Student.class);
 //设置条件  
 lambdaJoinWrapper
-        .main(Student.class)
+        .main(Student.class)
         // 学生名为张三 
         .eq(Student::getName, "张三")  
         //班级是软件三班
-        .joinTo(ClassInfo.class)
+        .joinTo(ClassInfo.class)
         .like(ClassInfo::getClassName, "软件三班");  
 
 //学生岗位数组  
 List<StudentVo> studentVoList = studentMapper.findVoList(lambdaJoinWrapper);
-
-
-
 ```
 
 mapper层(studentMapper)：
