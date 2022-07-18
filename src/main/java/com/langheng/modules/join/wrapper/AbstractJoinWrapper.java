@@ -648,7 +648,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         if (isWithLogicDelete.get() && !isCacheLogicDelete.get()) {
             this.classAlisMap.forEach((clazz, alis) -> {
                 TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
-                if (null != tableInfo) {
+                if (null != tableInfo && tableInfo.isWithLogicDelete()) {
                     String logicDeleteSql = tableInfo.getLogicDeleteSql(false, false);
                     expression.getNormal().add(() ->
                             String.format(" AND %s.%s ", alis, logicDeleteSql));
