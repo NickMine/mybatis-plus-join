@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'java-gradle-plugin'
     id 'maven-publish'
     id 'java'
 }
@@ -37,7 +38,9 @@ configurations {
 
 repositories {
     maven { url "https://maven.aliyun.com/repository/public" }
+    maven { url "https://jitpack.io" }
     mavenCentral()
+    mavenLocal()
 }
 
 
