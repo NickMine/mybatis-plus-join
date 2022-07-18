@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'java-gradle-plugin'
     id 'maven-publish'
     id 'java'
 }
@@ -37,7 +38,9 @@ configurations {
 
 repositories {
     maven { url "https://maven.aliyun.com/repository/public" }
+    maven { url "https://jitpack.io" }
     mavenCentral()
+    mavenLocal()
 }
 
 
@@ -55,12 +58,14 @@ dependencies {
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 }
 
-publishing{
-    publications{
-        create("maven_public",MavenPublication::class){
-            groupId "com.github.NickMine"
-            artifactId "mybatis-plus-join"
-            version "3.5.1-release"
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId 'com.langheng'
+            artifactId 'mybatis-plus-join'
+            version "${mybatisPlusVersion}"
+
+            from components.java
         }
     }
 }
