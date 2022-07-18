@@ -60,10 +60,12 @@ dependencies {
 
 publishing {
     publications {
-        create("maven_public", MavenPublication::class) {
-            groupId "com.github.NickMine"
-            artifactId "mybatis-plus-join"
-            version "3.5.1-release"
+        mavenJava(MavenPublication) {
+            groupId 'com.langheng'
+            artifactId 'mybatis-plus-join'
+            version "${mybatisPlusVersion}"
+
+            from components.java
         }
     }
 }
