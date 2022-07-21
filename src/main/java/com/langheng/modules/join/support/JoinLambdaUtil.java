@@ -1,10 +1,11 @@
 package com.langheng.modules.join.support;
 
-import cn.hutool.core.collection.ConcurrentHashSet;
-import cn.hutool.core.util.ReUtil;
-import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
+import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.core.toolkit.Assert;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.LambdaUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import com.baomidou.mybatisplus.core.toolkit.support.ColumnCache;
@@ -12,10 +13,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import java.text.MessageFormat;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * @author wuliangyu
@@ -49,7 +52,7 @@ public class JoinLambdaUtil {
      * 别名缓存类
      */
     private static final Set<String> ALIS_SET
-            = new ConcurrentHashSet<>();
+            = new ConcurrentSkipListSet<>();
 
     /**
      * 初始化类缓存方法
@@ -138,12 +141,146 @@ public class JoinLambdaUtil {
      * @return 别名
      */
     public static String tableNameToTableAlias(String tableName) {
-        List<String> resultList = ReUtil.findAll("_(\\w)", tableName, 1);
+        List<String> resultList = JoinLambdaUtil.findAll("_(\\w)", tableName, 1);
         //如果未找到匹配项，则直接使用表名的前3个字符（不含下划线）作为别名
-        if (resultList == null || resultList.isEmpty()) {
+        if (CollectionUtils.isEmpty(resultList)) {
             tableName = tableName.replace("_", "");
             return tableName.length() >= 3 ? tableName.substring(0, 3) : tableName;
         }
-        return tableName.substring(0, 1).concat(StrUtil.join("", resultList.toArray()));
+        return tableName.substring(0, 1).concat(StringUtils.join(resultList.toArray()));
+    }
+
+
+    /**
+     * 取得内容中匹配的所有结果
+     *
+     * @param regex   正则
+     * @param content 被查找的内容
+     * @param group   正则的分组
+     * @return 结果集
+     */
+    public static ArrayList<String> findAll(String regex, CharSequence content, int group) {
+        //编译后的正则模式
+        Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
+
+        //返回的集合类型
+        ArrayList<String> collection = new ArrayList<>();
+
+        final Matcher matcher = pattern.matcher(content);
+        while (matcher.find()) {
+            collection.add(matcher.group(group));
+        }
+        return collection;
+    }
+
+
+    /**
+     * 解析类的属性，转成查询column
+     *
+     * @param tableInfo      表缓存
+     * @param excludeColumns 不查询字段
+     * @return 表字段
+     */
+    public static List<String> getTableColumns(TableInfo tableInfo, String... excludeColumns) {
+
+        //排除查询字段
+        Set<String> excludeColumnsSet = StringUtils.isAnyBlank(excludeColumns) ?
+                Collections.emptySet() : Arrays.stream(excludeColumns).collect(Collectors.toSet());
+
+        //获取mybatis类缓存的表字段数组
+        List<String> fieldList = tableInfo.getFieldList().stream()
+                .map(TableFieldInfo::getColumn)
+                .collect(Collectors.toList());
+        //缓存表有主键
+        if (null != tableInfo.getKeyColumn()) {
+            //将主键放到第一的位置
+            fieldList.add(0, tableInfo.getKeyColumn());
+        }
+        //没有主键字段就返回field的数组
+        return fieldList.stream()
+                //排除
+                .filter(column -> !excludeColumnsSet.contains(column))
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * 获取类的表字段别名及列，eg：alis.column
+     *
+     * @param tableInfo 缓存表信息
+     * @return 返回类的别名字段
+     */
+    protected List<String> getTableAlisColumns(TableInfo tableInfo) {
+        //获取表名，转换为别名 sys_user -> su
+        String alis = JoinLambdaUtil.tableNameToTableAlias(tableInfo.getTableName());
+        //获取表的
+        List<String> tableColumns = getTableColumns(tableInfo);
+        return tableColumns.stream()
+                //别名加上列，如 t1.xx
+                .map(column -> this.addTableAliasToColumn(alis, column))
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * 解析类的属性，转成查询column
+     *
+     * @param clazz 获取类的表字段
+     * @return 返回类的表字段
+     */
+    public static List<String> getTableColumns(Class<?> clazz) {
+        Assert.notNull(clazz, "clazz must be not null");
+        TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
+        Assert.notNull(tableInfo, "Undiscovered table info . " + clazz.getName());
+
+        return getTableColumns(tableInfo);
+    }
+
+    /**
+     * 为列名添加别名
+     *
+     * @param column 列
+     * @param alis   别名
+     * @return 返回 alis.column
+     */
+    private String addTableAliasToColumn(String alis, String column) {
+        if (StringUtils.isNotBlank(alis)) {
+            if (column == null || column.contains(StringPool.DOT) || column.contains(StringPool.LEFT_BRACKET)) {
+                return column;
+            }
+            return alis.concat(column);
+        } else {
+            throw new MybatisPlusException("table alis is null or blank");
+        }
+    }
+
+
+    /**
+     * 获取查询表（tableInfo）逻辑删除正常字段<br>
+     * 如:<br>
+     * 表:student;<br>
+     * 别名:s;<br>
+     * 逻辑删除字段(@TableLogic修饰): status;<br>
+     * 结果 ==>  AND s.status = '0'<br>
+     *
+     * @param alis      别名
+     * @param tableInfo 表缓存信息
+     * @return 返回结果
+     */
+    public static String andNormalSql(String alis, TableInfo tableInfo) {
+        //获取缓存表的逻辑删除字段
+        TableFieldInfo logicDeleteFieldInfo = tableInfo
+                .getLogicDeleteFieldInfo();
+        //逻辑删除条件sql
+        String logicDeleteSql;
+        //获取逻辑未删除值
+        String value = logicDeleteFieldInfo
+                .getLogicNotDeleteValue();
+        if (StringPool.NULL.equalsIgnoreCase(value)) {
+            logicDeleteSql = logicDeleteFieldInfo.getColumn() + " IS NULL";
+        } else {
+            logicDeleteSql = logicDeleteFieldInfo.getColumn() + StringPool.EQUALS + String.format(logicDeleteFieldInfo.isCharSequence() ? "'%s'" : "%s", value);
+        }
+        return String.format(" AND %s.%s ", alis, logicDeleteSql);
     }
 }
