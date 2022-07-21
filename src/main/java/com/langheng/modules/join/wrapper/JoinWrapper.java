@@ -143,13 +143,11 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
 
 
         //拼接查询条件
-        if (joinWrapper.expression.getNormal().isEmpty()) {
-            return this;
-        } else {
+        if (CollectionUtils.isNotEmpty(joinWrapper.expression.getNormal())) {
             //执行sql拼接
             this.expression.add(WrapperKeyword.BRACKET_START, joinWrapper, WrapperKeyword.BRACKET_END);
-            return this;
         }
+        return this;
     }
 
     /**
@@ -179,7 +177,7 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
      * @return this
      */
     public <R> JoinWrapper<T> leftJoin(Map<String, String> joinFieldMap, Class<R> clazz, Function<JoinWrapper<R>, JoinWrapper<R>> func) {
-        return join("LEFT", joinFieldMap, clazz, func);
+        return join(JoinPart.JoinType.LEFT_JOIN, joinFieldMap, clazz, func);
     }
 
     /**
@@ -193,7 +191,7 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
      * @return this
      */
     public <R> JoinWrapper<T> leftJoin(String fromField, String toField, Class<R> clazz, Function<JoinWrapper<R>, JoinWrapper<R>> func) {
-        return join("LEFT", fromField, toField, clazz, func);
+        return join(JoinPart.JoinType.LEFT_JOIN, fromField, toField, clazz, func);
     }
 
     /**
@@ -206,7 +204,7 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
      * @return this
      */
     public <R> JoinWrapper<T> rightJoin(Map<String, String> joinFieldMap, Class<R> clazz, Function<JoinWrapper<R>, JoinWrapper<R>> func) {
-        return join("RIGHT", joinFieldMap, clazz, func);
+        return join(JoinPart.JoinType.RIGHT_JOIN, joinFieldMap, clazz, func);
     }
 
     /**
@@ -220,7 +218,7 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
      * @return this
      */
     public <R> JoinWrapper<T> rightJoin(String fromField, String toField, Class<R> clazz, Function<JoinWrapper<R>, JoinWrapper<R>> func) {
-        return join("RIGHT", fromField, toField, clazz, func);
+        return join(JoinPart.JoinType.RIGHT_JOIN, fromField, toField, clazz, func);
     }
 
     /**
@@ -233,7 +231,7 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
      * @return this
      */
     public <R> JoinWrapper<T> innerJoin(Map<String, String> joinFieldMap, Class<R> clazz, Function<JoinWrapper<R>, JoinWrapper<R>> func) {
-        return join("INNER", joinFieldMap, clazz, func);
+        return join(JoinPart.JoinType.INNER_JOIN, joinFieldMap, clazz, func);
     }
 
     /**
@@ -247,6 +245,6 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
      * @return this
      */
     public <R> JoinWrapper<T> innerJoin(String fromField, String toField, Class<R> clazz, Function<JoinWrapper<R>, JoinWrapper<R>> func) {
-        return join("INNER", fromField, toField, clazz, func);
+        return join(JoinPart.JoinType.INNER_JOIN, fromField, toField, clazz, func);
     }
 }

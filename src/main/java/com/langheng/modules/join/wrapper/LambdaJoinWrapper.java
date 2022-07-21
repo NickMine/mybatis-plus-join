@@ -10,17 +10,13 @@ import com.baomidou.mybatisplus.core.toolkit.support.SerializedLambda;
 import com.langheng.modules.join.support.AlisColumnCache;
 import com.langheng.modules.join.support.JoinLambdaUtil;
 import com.langheng.modules.join.support.JoinPart;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.reflection.property.PropertyNamer;
 
 import java.text.MessageFormat;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -53,22 +49,6 @@ public class LambdaJoinWrapper<Main>
             tableAlias = JoinLambdaUtil.tableNameToTableAlias(getClassTableName(getEntityClass()));
         }
         this.tableAlias = tableAlias;
-    }
-
-    /**
-     * 将源列表中的元素移动到目标列表中
-     *
-     * @param srcList  源列表
-     * @param destList 目标列表
-     * @param <R>      元素类型
-     */
-    private static <R> void moveItems(List<R> srcList, List<R> destList) {
-        if (srcList == null || destList == null || srcList.isEmpty()) {
-            return;
-        }
-        //由于mybatis-plus自定义了List子类，重新实现了addAll，因此此处只能循环使用add
-        srcList.forEach(item -> destList.add(item));
-        srcList.clear();
     }
 
     /**
@@ -250,40 +230,6 @@ public class LambdaJoinWrapper<Main>
         }
         //lambda表达式的类没有自定义，使用缓存
         return alisColumnCache.getAlisColumn();
-    }
-
-
-    /**
-     * lambda表达式转实体对应字段
-     *
-     * @param column     实体类的lambda表达式
-     * @param onlyColumn 获取列,true:没有别名(user_id);false:有别名(t1.user_id)
-     * @return 列
-     */
-    protected <T> String columnToString(SFunction<T, ?> column, boolean onlyColumn) {
-        AlisColumnCache alisColumnCache = getAlisColumnCache(column);
-        return onlyColumn ? alisColumnCache.getColumn() : alisColumnCache.getAlisColumn();
-    }
-
-    /**
-     * 获取lambda表达式缓存
-     * 获取 SerializedLambda 对应的列信息，从 lambda 表达式中推测实体类
-     * 如果获取不到列信息，那么本次条件组装将会失败
-     *
-     * @param column 实体类的lambda表达式
-     * @return 实体类对应列缓存
-     */
-    private <T> AlisColumnCache getAlisColumnCache(SFunction<T, ?> column) {
-        //解析表达式
-        SerializedLambda serializedLambda = LambdaUtils.resolve(column);
-        //获取列明
-        String fieldName = PropertyNamer.methodToProperty(serializedLambda.getImplMethodName());
-        //获取实体类类型
-        Class<?> instantiatedClass = serializedLambda.getInstantiatedType();
-        //尝试缓存
-        JoinLambdaUtil.tryInitCache(instantiatedClass);
-        //获取缓存
-        return JoinLambdaUtil.getAlisColumnCache(fieldName, instantiatedClass);
     }
 
     /**

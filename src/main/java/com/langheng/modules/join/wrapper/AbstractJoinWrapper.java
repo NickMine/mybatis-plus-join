@@ -1,8 +1,5 @@
 package com.langheng.modules.join.wrapper;
 
-import cn.hutool.core.util.ReUtil;
-import cn.hutool.core.util.ReflectUtil;
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
 import com.baomidou.mybatisplus.core.conditions.SharedString;
@@ -21,6 +18,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -198,7 +196,6 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
                 if (this.getEntity() == null) {
                     throw new MybatisPlusException("ew.entity is null!");
                 }
-
                 //主表
                 String mainSelect = this.sqlSelectAll(this.tableAlias);
                 sqlSelectList.add(mainSelect);
@@ -213,35 +210,16 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         sqlSelect = CollectionUtils.isNotEmpty(sqlSelectList) ?
                 stripSqlInjection(String.join(StringPool.COMMA, sqlSelectList)) : null;
 
-
         if (StringUtils.isBlank(sqlSelect)) {
             // 兜底查询字段，出现没有，或者出错的情况下
             String columnPrefix = getColumnPrefix();
             //select字段为空时，使用*进行查询
             //返回 alis.*
             sqlSelect = columnPrefix.concat(StringPool.ASTERISK);
-
         }
         //设置缓存
         this.sqlSelect.setStringValue(sqlSelect);
         return sqlSelect;
-    }
-
-    /**
-     * 获取类的表字段别名及列，eg：alis.column
-     *
-     * @param tableInfo 缓存表信息
-     * @return 返回类的别名字段
-     */
-    protected List<String> getTableAlisColumns(TableInfo tableInfo) {
-        //获取表名，转换为别名 sys_user -> su
-        String alis = JoinLambdaUtil.tableNameToTableAlias(tableInfo.getTableName());
-        //获取表的
-        List<String> tableColumns = getTableColumns(tableInfo);
-        return tableColumns.stream()
-                //别名加上列，如 t1.xx
-                .map(column -> this.addTableAliasToColumn(alis, column))
-                .collect(Collectors.toList());
     }
 
     /**
@@ -264,7 +242,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         if (tableAlias == null) {
             tableAlias = "main";
         }
-        if (StringUtils.isEmpty(tableAlias)) {
+        if (StringUtils.isBlank(tableAlias)) {
             return "";
         }
         return tableAlias.concat(StringPool.DOT);
@@ -317,7 +295,9 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         if (tableInfo.havePK()) {
             fieldNameAliasNameMap.putIfAbsent(tableInfo.getKeyProperty(), this.tableAlias);
         }
-        Field[] fields = ReflectUtil.getFields(selectClass);
+
+        Field[] fields = FieldUtils.getAllFields(selectClass);
+//        Field[] fields = ReflectUtil.getFields(selectClass);
         for (Field field : fields) {
             field.setAccessible(true);
             //跳过serialVersionUID
@@ -339,7 +319,10 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             }
 
             //查询column名
-            String columnName = getTableFieldNameByEntityFieldName(field.getName());
+            //直接将查询类的属性转为大写字母用下划线分割形式
+            //例如：userId ==> user_id
+            String columnName = com.baomidou.mybatisplus.core.toolkit.StringUtils
+                    .camelToUnderline(field.getName());
 
             //是否使用别名
             if (StringUtils.isNotBlank(columnName)) {
@@ -352,62 +335,6 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             }
         }
         return sqlSelect;
-    }
-
-    /**
-     * 根据数据库实体类字段名称生成数据库表字段名称
-     *
-     * @param entityFieldName 数据库实体类名称
-     * @return 数据库表名称
-     */
-    public static String getTableFieldNameByEntityFieldName(String entityFieldName) {
-        if (StringUtils.isEmpty(entityFieldName)) {
-            return "";
-        }
-        return ReUtil.replaceAll(entityFieldName, "([a-z])([A-Z])", "$1_$2").toLowerCase();
-    }
-
-    /**
-     * 解析类的属性，转成查询column
-     *
-     * @param clazz 获取类的表字段
-     * @return 返回类的表字段
-     */
-    public static List<String> getTableColumns(Class<?> clazz) {
-        Assert.notNull(clazz, "clazz must be not null");
-        TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
-        Assert.notNull(tableInfo, "Undiscovered table info . " + clazz.getName());
-
-        return getTableColumns(tableInfo);
-    }
-
-    /**
-     * 解析类的属性，转成查询column
-     *
-     * @param tableInfo      表缓存
-     * @param excludeColumns 不查询字段
-     * @return 表字段
-     */
-    public static List<String> getTableColumns(TableInfo tableInfo, String... excludeColumns) {
-
-        //排除查询字段
-        Set<String> excludeColumnsSet = StringUtils.isAnyBlank(excludeColumns) ?
-                Collections.emptySet() : Arrays.stream(excludeColumns).collect(Collectors.toSet());
-
-        //获取mybatis类缓存的表字段数组
-        List<String> fieldList = tableInfo.getFieldList().stream()
-                .map(TableFieldInfo::getColumn)
-                .collect(Collectors.toList());
-        //缓存表有主键
-        if (null != tableInfo.getKeyColumn()) {
-            //将主键放到第一的位置
-            fieldList.add(0, tableInfo.getKeyColumn());
-        }
-        //没有主键字段就返回field的数组
-        return fieldList.stream()
-                //排除
-                .filter(column -> !excludeColumnsSet.contains(column))
-                .collect(Collectors.toList());
     }
 
     /**
@@ -424,8 +351,8 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
         TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
         if (null == tableInfo) {
             //没有获取到，直接将该类的名称转换为表明
-            log.warn("该连表构造器的实体类没有从Mybatis-Plus缓存中获取");
-            return StrUtil.toUnderlineCase(clazz.getSimpleName());
+            log.warn("该连表构造器的实体类[{}]没有从Mybatis-Plus缓存中获取", clazz.getName());
+            return com.baomidou.mybatisplus.core.toolkit.StringUtils.camelToUnderline(clazz.getSimpleName());
         }
         return tableInfo.getTableName();
     }
@@ -464,37 +391,6 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
     }
 
     /**
-     * 为列名添加别名
-     *
-     * @param column 列
-     * @return 当前主表别名添加的查询列，alis.column
-     */
-    private String addTableAliasToColumn(String column) {
-        if (column == null || column.contains(StringPool.DOT) || column.contains(StringPool.LEFT_BRACKET)) {
-            return column;
-        }
-        return getColumnPrefix().concat(column);
-    }
-
-    /**
-     * 为列名添加别名
-     *
-     * @param column 列
-     * @param alis   别名
-     * @return 返回 alis.column
-     */
-    private String addTableAliasToColumn(String alis, String column) {
-        if (StringUtils.isNotBlank(alis)) {
-            if (column == null || column.contains(StringPool.DOT) || column.contains(StringPool.LEFT_BRACKET)) {
-                return column;
-            }
-            return alis.concat(column);
-        } else {
-            return addTableAliasToColumn(column);
-        }
-    }
-
-    /**
      * 获取主表名
      *
      * @return 返回当前主表别名alis
@@ -528,7 +424,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
                         String fromField = joinOn.getKey().contains(".") ? joinOn.getKey() :
                                 String.format("%s.%s",
                                         //没有设置主表别名，就用当前wrapper设置的主表别名
-                                        StringUtils.isEmpty(joinPart.getFromTableAlias()) ? this.tableAlias : joinPart.getFromTableAlias()
+                                        StringUtils.isBlank(joinPart.getFromTableAlias()) ? this.tableAlias : joinPart.getFromTableAlias()
                                         , joinOn.getKey());
                         //连表字段
                         String toField = joinOn.getValue().contains(".") ? joinOn.getValue() :
@@ -649,9 +545,14 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             this.classAlisMap.forEach((clazz, alis) -> {
                 TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
                 if (null != tableInfo && tableInfo.isWithLogicDelete()) {
-                    String logicDeleteSql = tableInfo.getLogicDeleteSql(false, false);
-                    expression.getNormal().add(() ->
-                            String.format(" AND %s.%s ", alis, logicDeleteSql));
+                    //获取查询表（tableInfo）逻辑删除正常字段
+                    //如:
+                    // 表:student;
+                    // 别名:s;
+                    // 逻辑删除字段(@TableLogic修饰): status;
+                    // 输出结果 ==>  AND s.status = '0'
+                    String andNormalSql = JoinLambdaUtil.andNormalSql(alis, tableInfo);
+                    expression.getNormal().add(() -> andNormalSql);
                 }
             });
             isCacheLogicDelete.set(true);
