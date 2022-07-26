@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.reflection.property.PropertyNamer;
 
 import com.baomidou.mybatisplus.core.conditions.ISqlSegment;
@@ -14,6 +13,7 @@ import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.toolkit.LambdaUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.core.toolkit.support.SerializedLambda;
 import com.langheng.modules.join.support.AlisColumnCache;
@@ -47,7 +47,7 @@ public class LambdaJoinWrapper<Main>
      */
     @Override
     public void setTableAlias(String tableAlias) {
-        if (!StringUtils.isNotBlank(tableAlias)) {
+        if (StringUtils.isBlank(tableAlias)) {
             tableAlias = JoinLambdaUtil.tableNameToTableAlias(getClassTableName(getEntityClass()));
         }
         this.tableAlias = tableAlias;
