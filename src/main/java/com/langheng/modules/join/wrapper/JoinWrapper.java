@@ -1,15 +1,16 @@
 package com.langheng.modules.join.wrapper;
 
-import com.baomidou.mybatisplus.core.conditions.ISqlSegment;
-import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
-import com.langheng.modules.join.support.JoinPart;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.baomidou.mybatisplus.core.conditions.ISqlSegment;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
+import com.langheng.modules.join.support.JoinPart;
 
 /**
  * @author: wuliangyu
@@ -140,7 +141,6 @@ public class JoinWrapper<T> extends AbstractJoinWrapper<T, String, JoinWrapper<T
         if (CollectionUtils.isNotEmpty(joinWrapper.sqlColumn)) {
             this.sqlColumn.addAll(joinWrapper.sqlColumn);
         }
-
 
         //拼接查询条件
         if (CollectionUtils.isNotEmpty(joinWrapper.expression.getNormal())) {

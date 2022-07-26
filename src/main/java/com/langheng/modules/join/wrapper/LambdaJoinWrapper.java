@@ -1,24 +1,26 @@
 package com.langheng.modules.join.wrapper;
 
-import com.baomidou.mybatisplus.core.conditions.ISqlSegment;
-import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
-import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
-import com.baomidou.mybatisplus.core.toolkit.LambdaUtils;
-import com.baomidou.mybatisplus.core.toolkit.StringPool;
-import com.baomidou.mybatisplus.core.toolkit.support.LambdaMeta;
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
-import com.langheng.modules.join.support.AlisColumnCache;
-import com.langheng.modules.join.support.JoinLambdaUtil;
-import com.langheng.modules.join.support.JoinPart;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.ibatis.reflection.property.PropertyNamer;
-
 import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import org.apache.ibatis.reflection.property.PropertyNamer;
+
+import com.baomidou.mybatisplus.core.conditions.ISqlSegment;
+import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.core.toolkit.LambdaUtils;
+import com.baomidou.mybatisplus.core.toolkit.StringPool;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.core.toolkit.support.LambdaMeta;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
+import com.langheng.modules.join.support.AlisColumnCache;
+import com.langheng.modules.join.support.JoinLambdaUtil;
+import com.langheng.modules.join.support.JoinPart;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * date: 2021/10/27 11:51 上午
@@ -45,7 +47,7 @@ public class LambdaJoinWrapper<Main>
      */
     @Override
     public void setTableAlias(String tableAlias) {
-        if (!StringUtils.isNotBlank(tableAlias)) {
+        if (StringUtils.isBlank(tableAlias)) {
             tableAlias = JoinLambdaUtil.tableNameToTableAlias(getClassTableName(getEntityClass()));
         }
         this.tableAlias = tableAlias;
