@@ -1,5 +1,17 @@
 package com.langheng.modules.join.support;
 
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
 import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
@@ -8,17 +20,10 @@ import com.baomidou.mybatisplus.core.toolkit.Assert;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.LambdaUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.support.ColumnCache;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
-import java.text.MessageFormat;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author wuliangyu
@@ -29,23 +34,20 @@ import java.util.stream.Collectors;
 @Slf4j
 public class JoinLambdaUtil {
 
+    /**
+     * 连表模版sql
+     */
     public static final String SELECT_TEMPLATE = "<script> SELECT ${ew.sqlSelect} FROM ${ew.tableName} ${ew.tableAlias} ${ew.joinPart} ${ew.customSqlSegment} \n</script>";
 
 
     /**
-     * 表字段（column）和 实体字段（entity属性）缓存map
-     * <p>
-     * Map<tableName,Map<实体字段，表字段>>
+     * 表字段（column）和 实体字段（entity属性）缓存map <br>
+     * 表的默认别名，都是以表的映射类生成，可能会出现重名，请注意 <br>
+     * eg：<b>ass_nominate</b> 和 <b>ass_note</b>,两个表都是 "an" <br>
+     * 做好区分 <br>
+     * Map<'tableName',Map<'实体字段'，表字段>> <br>
      */
     private static final ConcurrentHashMap<Class<?>, Map<String, AlisColumnCache>> COLUMN_CACHE_MAP
-            = new ConcurrentHashMap<>(5);
-
-    /**
-     * 表的默认别名，都是以表的映射类生成，可能会出现重名，请注意
-     * eg：ass_nominate 和 ass_note,两个表都是 "an"
-     * 做好区分
-     */
-    private static final ConcurrentHashMap<Class<?>, String> DEFAULT_TABLE_ALIS_CACHE_MAP
             = new ConcurrentHashMap<>(5);
 
     /**
@@ -85,14 +87,12 @@ public class JoinLambdaUtil {
             Map<String, AlisColumnCache> alisColumnMap = new ConcurrentHashMap<>(columnMap.size());
             //获取表别名
             String tableAlis = tableNameToUniqueTableAlias(tableInfo.getTableName());
-            //放入缓存
-            DEFAULT_TABLE_ALIS_CACHE_MAP.put(aClass, tableAlis);
             //将字段和属性遍历放入缓存
             columnMap.forEach((property, columnCache) -> {
                 String column = columnCache.getColumn();
                 alisColumnMap.put(property,
                         new AlisColumnCache(
-                                StringUtils.joinWith(StringPool.DOT, tableAlis, column),
+                                String.join(StringPool.DOT, tableAlis, column),
                                 tableAlis,
                                 column,
                                 columnCache.getColumnSelect()
@@ -121,13 +121,9 @@ public class JoinLambdaUtil {
                 alis += alis + i;
                 i++;
             } while (ALIS_SET.contains(alis));
+            ALIS_SET.add(alis);
         }
         return alis;
-    }
-
-
-    public static ColumnCache getColumnCache(String fieldName, Class<?> aClass) {
-        return LambdaUtils.getColumnMap(aClass).get(LambdaUtils.formatKey(fieldName));
     }
 
     public static AlisColumnCache getAlisColumnCache(String fieldName, Class<?> aClass) {
@@ -135,7 +131,7 @@ public class JoinLambdaUtil {
     }
 
     /**
-     * 根据数据库表名生成别名（可能重复）（通常取首字母，比如sys_user的别名为su，）
+     * 根据数据库表名生成别名（可能重复）（通常取首字母，比如<b>sys_user</b>的别名为<b>su</b>，）
      *
      * @param tableName 数据库
      * @return 别名
@@ -147,7 +143,9 @@ public class JoinLambdaUtil {
             tableName = tableName.replace("_", "");
             return tableName.length() >= 3 ? tableName.substring(0, 3) : tableName;
         }
-        return tableName.substring(0, 1).concat(StringUtils.join(resultList.toArray()));
+        final StringBuilder stringBuilder = new StringBuilder(tableName.substring(0, 1));
+        resultList.forEach(stringBuilder::append);
+        return stringBuilder.toString();
     }
 
 
@@ -184,8 +182,14 @@ public class JoinLambdaUtil {
     public static List<String> getTableColumns(TableInfo tableInfo, String... excludeColumns) {
 
         //排除查询字段
-        Set<String> excludeColumnsSet = StringUtils.isAnyBlank(excludeColumns) ?
-                Collections.emptySet() : Arrays.stream(excludeColumns).collect(Collectors.toSet());
+        Set<String> excludeColumnsSet = new HashSet<>();
+        if (null != excludeColumns && 0 < excludeColumns.length) {
+            for (String excludeColumn : excludeColumns) {
+                if (StringUtils.isNotBlank(excludeColumn)) {
+                    excludeColumnsSet.add(excludeColumn);
+                }
+            }
+        }
 
         //获取mybatis类缓存的表字段数组
         List<String> fieldList = tableInfo.getFieldList().stream()
@@ -205,7 +209,7 @@ public class JoinLambdaUtil {
 
 
     /**
-     * 获取类的表字段别名及列，eg：alis.column
+     * 获取类的表字段别名及列，eg：<b>alis.column</b>
      *
      * @param tableInfo 缓存表信息
      * @return 返回类的别名字段

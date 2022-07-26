@@ -1,23 +1,24 @@
 package com.langheng.modules.join.support;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 /**
- * @author: wuliangyu
- * @date: 2021/2/23 3:19 下午
- * @description: 用于joinWrapper联表缓存联表信息
+ * @author wuliangyu
+ * @date 2021/2/23 3:19 下午
+ * @description 用于joinWrapper联表缓存联表信息
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
 public class JoinPart {
+
     /**
      * 连接类型：LEFT：左连接；RIGHT：右连接
      */
@@ -50,7 +51,7 @@ public class JoinPart {
 
     /**
      * 连接数据表连表条件
-     * <p>
+     *
      * 如：select xx from table1 t1 left join table2 t2 on(t1.xx = t2.xx AND <b>apply</b>)
      */
     private String apply;
@@ -60,6 +61,7 @@ public class JoinPart {
      * 连表类型
      */
     public static class JoinType {
+
         public static final String LEFT_JOIN = "LEFT";
         public static final String RIGHT_JOIN = "RIGHT";
         public static final String INNER_JOIN = "INNER";

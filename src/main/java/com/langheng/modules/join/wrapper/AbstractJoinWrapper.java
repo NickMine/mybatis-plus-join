@@ -1,5 +1,18 @@
 package com.langheng.modules.join.wrapper;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
 import com.baomidou.mybatisplus.core.conditions.SharedString;
@@ -10,22 +23,17 @@ import com.baomidou.mybatisplus.core.metadata.TableInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.toolkit.Assert;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
+import com.baomidou.mybatisplus.core.toolkit.ReflectionKit;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.langheng.modules.join.conditions.query.JoinQuery;
+import com.langheng.modules.join.enums.BaseFuncEnum;
 import com.langheng.modules.join.support.JoinLambdaUtil;
 import com.langheng.modules.join.support.JoinPart;
+
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.reflect.FieldUtils;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 /**
  * @author wuliangyu
@@ -296,26 +304,22 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             fieldNameAliasNameMap.putIfAbsent(tableInfo.getKeyProperty(), this.tableAlias);
         }
 
-        Field[] fields = FieldUtils.getAllFields(selectClass);
-//        Field[] fields = ReflectUtil.getFields(selectClass);
-        for (Field field : fields) {
+        List<Field> fields = ReflectionKit.getFieldList(selectClass);
+        fields.forEach(field -> {
             field.setAccessible(true);
             //跳过serialVersionUID
             if ("serialVersionUID".equals(field.getName())) {
-                continue;
+                return;
             }
             //跳过静态类
             if (Modifier.isStatic(field.getModifiers())) {
-                continue;
+                return;
             }
             //跳过被标记为不存在的字段
             //用@TableField 注解修饰，并且标记为跳过的，如@TableField(exist = false),或@TableField(select = false)
             TableField tableField = field.getAnnotation(TableField.class);
             if (null != tableField && !tableField.exist()) {
-                continue;
-            }
-            if (null != tableField && !tableField.select()) {
-                continue;
+                return;
             }
 
             //查询column名
@@ -333,7 +337,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
                         //列添加别名
                         aliasName.concat(StringPool.DOT).concat(columnName) : columnName);
             }
-        }
+        });
         return sqlSelect;
     }
 
@@ -418,7 +422,7 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             //连接数据库字段名称（key为主表字段，value为连接表字段）
             Map<String, String> joinFieldsMap = joinPart.getJoinFieldsMap();
             //拼接连表字段
-            String joinFields = StringUtils.joinWith(" AND ", joinFieldsMap.entrySet().stream()
+            String joinFields = joinFieldsMap.entrySet().stream()
                     .map(joinOn -> {
                         //主表字段
                         String fromField = joinOn.getKey().contains(".") ? joinOn.getKey() :
@@ -435,20 +439,23 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
                         if (useIn) {
                             String listStr = joinOn.getValue().replace("in:", "");
                             String[] arr = listStr.split(",");
-                            return String.format("%s IN (%s)", fromField,
-                                    StringUtils.joinWith(",", Arrays.stream(arr)
+                            return String.format(
+                                    "%s IN (%s)",
+                                    fromField,
+                                    Arrays.stream(arr)
                                             .map(this::wrapWithSingleQuote)
-                                            .collect(Collectors.toList())));
+                                            .collect(Collectors.joining(","))
+                            );
                         }
                         return String.format("%s = %s", fromField, toField);
                     })
-                    .toArray());
+                    .collect(Collectors.joining(" AND "));
 
             // 2.处理连表 额外条件(apply)
             // apply 是left join t2 on 的额外添加条件
             // 如 select * from table1 t1 LEFT JOIN table2 t2 ON (t1.xx = t2.xx AND apply )
             String apply = StringUtils.isNotBlank(joinPart.getApply()) ?
-                    StringUtils.joinWith(StringPool.SPACE, StringPool.AND, joinPart.getApply()) : StringPool.SPACE;
+                    String.join(StringPool.SPACE, StringPool.AND, joinPart.getApply()) : StringPool.SPACE;
             //返回的条件表达  table1 t1 join table2 t2 on(t1.xx = t2.xx AND apply)
             String joinPartFormat = String.format("%s JOIN %s %s ON( %s %s)",
                     joinPart.getJoinType(),
@@ -460,9 +467,8 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             joinParts.add(joinPartFormat);
         }
 
-
         //每一个left join 用换行隔开
-        return StringUtils.joinWith(StringPool.NEWLINE, joinParts.toArray());
+        return String.join(StringPool.NEWLINE, joinParts);
     }
 
     /**
@@ -520,6 +526,15 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
             this.isSetSelect = true;
         }
 
+        return typedThis;
+    }
+
+    @Override
+    public Children selectFun(BaseFuncEnum fun, R column) {
+        String sqlSelect = this.columnToString(column);
+        this.sqlColumn.add(String.format(fun.getSql(), sqlSelect));
+        // sql设置了，isSetSelect 设置为 true
+        this.isSetSelect = true;
         return typedThis;
     }
 

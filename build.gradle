@@ -15,7 +15,6 @@ ext {
     libraries = [
             springBootVersion = '2.6.7',
             mybatisPlusVersion = '3.5.1',
-            commonsLang3Version = '3.12.0',
             lombokVersion = '1.18.22'
     ]
 }
@@ -48,8 +47,6 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
     //mybatis
     implementation "com.baomidou:mybatis-plus-boot-starter:${mybatisPlusVersion}"
-    //commons
-    implementation "org.apache.commons:commons-lang3:${commonsLang3Version}"
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     developmentOnly "org.springframework.boot:spring-boot-devtools:${springBootVersion}"
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
