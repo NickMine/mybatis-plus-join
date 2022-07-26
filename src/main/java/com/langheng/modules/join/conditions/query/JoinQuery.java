@@ -2,6 +2,8 @@ package com.langheng.modules.join.conditions.query;
 
 import java.io.Serializable;
 
+import com.langheng.modules.join.enums.BaseFuncEnum;
+
 /**
  * @author wuliangyu
  * @date 2022/5/25 9:50 上午
@@ -26,4 +28,10 @@ public interface JoinQuery<Children, R> extends Serializable {
      * @return children
      */
     Children select(Class<?> dtoClass);
+
+    /**
+     * 查询函数列
+     * <p>select xx(*) as alias</p>
+     */
+    Children selectFun(BaseFuncEnum fun, R column);
 }
