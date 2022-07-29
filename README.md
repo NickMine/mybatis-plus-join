@@ -10,49 +10,26 @@ mybatis-plus的连表的增强，提供lambda和字符串两种方式的wrapper�
 
 # 使用
 
+git拉取项目，利用maven或gradle打包到本地仓库。
+
 - maven
-
-**Step 1.** Add the JitPack repository to your build file
-
-```markup
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
-```
-
-**Step 2.** Add the dependency
 
 ```markup
     <dependency>
-        <groupId>com.github.NickMine</groupId>
+        <groupId>com.langheng</groupId>
         <artifactId>mybatis-plus-join</artifactId>
-        <version>r.3.5.1</version>
+        <version>3.5.1</version>
     </dependency>
 ```
 
 - gradle
 
-**Step 1.** Add the JitPack repository to your build file
-
-Add it in your root build.gradle at the end of repositories:
-
-```xml
-    allprojects {
-        repositories {
-            ...            maven { url 'https://jitpack.io' }
-        }
-    }
-```
-
-**Step 2.** Add the dependency
+**Step 1.** Add the dependency
 
 ```xml
     dependencies {
-            implementation 'com.github.NickMine:mybatis-plus-join:r.3.5.1'
-    }
+        implementation 'com.langheng:mybatis-plus-join:3.5.1'
+        }
 ```
 
 ### 代码用例
