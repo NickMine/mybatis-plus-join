@@ -40,17 +40,17 @@ git拉取项目，利用maven或gradle打包到本地仓库。
 LambdaJoinWrapper<Student> lambdaJoinWrapper=
         new LambdaJoinWrapper<>(Student.class,StudentVo.class)
         .leftJoin(UserClass.class,
-        Student::getStudentId,
-        UserClass::getStudentId
+            Student::getStudentId,
+            UserClass::getStudentId
         )
         .joinTo(UserClass.class)
         .leftJoin(ClassInfo.class,
-        UserClass::getClassInfoId,
-        ClassInfo::getClassInfoId
+            UserClass::getClassInfoId,
+            ClassInfo::getClassInfoId
         )
         .main(Student.class);
-//设置条件  
-        lambdaJoinWrapper
+        //设置条件
+lambdaJoinWrapper
         .main(Student.class)
         // 学生名为张三 
         .eq(Student::getName,"张三")
@@ -58,8 +58,8 @@ LambdaJoinWrapper<Student> lambdaJoinWrapper=
         .joinTo(ClassInfo.class)
         .like(ClassInfo::getClassName,"软件三班");
 
-//学生岗位数组  
-        List<StudentVo> studentVoList=studentMapper.findVoList(lambdaJoinWrapper);
+//学生岗位数组
+List<StudentVo> studentVoList=studentMapper.findVoList(lambdaJoinWrapper);
 ```
 
 mapper层(studentMapper)：
