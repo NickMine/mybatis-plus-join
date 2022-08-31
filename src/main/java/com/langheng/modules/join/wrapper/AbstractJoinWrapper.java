@@ -530,9 +530,13 @@ public abstract class AbstractJoinWrapper<T, R, Children extends AbstractJoinWra
     }
 
     @Override
-    public Children selectFun(BaseFuncEnum fun, R column) {
+    public Children selectFunAlis(BaseFuncEnum fun, R column, String alis) {
         String sqlSelect = this.columnToString(column);
-        this.sqlColumn.add(String.format(fun.getSql(), sqlSelect));
+        if (StringUtils.isBlank(alis)) {
+            this.sqlColumn.add(String.format(fun.getSql(), sqlSelect));
+        } else {
+            this.sqlColumn.add(String.format(fun.getSql(), sqlSelect) + " AS " + alis);
+        }
         // sql设置了，isSetSelect 设置为 true
         this.isSetSelect = true;
         return typedThis;

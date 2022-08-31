@@ -50,7 +50,7 @@ LambdaJoinWrapper<Student> lambdaJoinWrapper=
         )
         .main(Student.class);
 //设置条件  
-lambdaJoinWrapper
+        lambdaJoinWrapper
         .main(Student.class)
         // 学生名为张三 
         .eq(Student::getName,"张三")
@@ -59,7 +59,7 @@ lambdaJoinWrapper
         .like(ClassInfo::getClassName,"软件三班");
 
 //学生岗位数组  
-List<StudentVo> studentVoList=studentMapper.findVoList(lambdaJoinWrapper);
+        List<StudentVo> studentVoList=studentMapper.findVoList(lambdaJoinWrapper);
 ```
 
 mapper层(studentMapper)：
@@ -68,3 +68,7 @@ mapper层(studentMapper)：
 @Select(JoinLambdaUtil.SELECT_TEMPLATE)  
 List<StudentVo> findVoList(@Param("ew") Wrapper<?> wrapper);
 ```
+
+# 感谢
+如果感觉本框架对您有所帮助，烦请去给个小星星⭐️，欢迎提issue。
+if you think this project is helpful，star it please！
