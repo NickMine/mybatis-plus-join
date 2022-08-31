@@ -18,7 +18,7 @@ git拉取项目，利用maven或gradle打包到本地仓库。
     <dependency>
         <groupId>com.langheng</groupId>
         <artifactId>mybatis-plus-join</artifactId>
-        <version>3.5.1</version>
+        <version>3.5.2</version>
     </dependency>
 ```
 
@@ -28,7 +28,7 @@ git拉取项目，利用maven或gradle打包到本地仓库。
 
 ```xml
     dependencies {
-        implementation 'com.langheng:mybatis-plus-join:3.5.1'
+        implementation 'com.langheng:mybatis-plus-join:3.5.2'
         }
 ```
 
