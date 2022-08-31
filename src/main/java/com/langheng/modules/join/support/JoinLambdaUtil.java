@@ -24,8 +24,8 @@ import com.baomidou.mybatisplus.core.toolkit.LambdaUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.support.ColumnCache;
+import com.baomidou.mybatisplus.core.toolkit.support.LambdaMeta;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
-import com.baomidou.mybatisplus.core.toolkit.support.SerializedLambda;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -253,8 +253,8 @@ public class JoinLambdaUtil {
      */
     public String getColumnToString(SFunction<?, ?> column) {
         //解析表达式
-        SerializedLambda serializedLambda = LambdaUtils.resolve(column);
-        //获取列名
+        LambdaMeta serializedLambda = LambdaUtils.extract(column);
+        //获取列明
         return PropertyNamer.methodToProperty(serializedLambda.getImplMethodName());
     }
 
