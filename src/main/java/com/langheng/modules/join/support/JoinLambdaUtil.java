@@ -12,6 +12,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.ibatis.reflection.property.PropertyNamer;
+
 import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
 import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
@@ -22,6 +24,8 @@ import com.baomidou.mybatisplus.core.toolkit.LambdaUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.support.ColumnCache;
+import com.baomidou.mybatisplus.core.toolkit.support.LambdaMeta;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -238,6 +242,20 @@ public class JoinLambdaUtil {
         Assert.notNull(tableInfo, "Undiscovered table info . " + clazz.getName());
 
         return getTableColumns(tableInfo);
+    }
+
+
+    /**
+     * 获取lambda表达式的属性名
+     *
+     * @param column 类属性的lambda表达式
+     * @return 返回属性名
+     */
+    public String getColumnToString(SFunction<?, ?> column) {
+        //解析表达式
+        LambdaMeta serializedLambda = LambdaUtils.extract(column);
+        //获取列明
+        return PropertyNamer.methodToProperty(serializedLambda.getImplMethodName());
     }
 
     /**
